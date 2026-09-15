@@ -2,7 +2,7 @@
 from pathlib import Path
 import hashlib, json
 root=Path(__file__).resolve().parents[1]
-assets=['./','./index.html','./styles.css','./app.js','./state.js','./playground.js','./data/lessons.js','./data/curriculum.json','./data/solutions.json','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png']
+assets=['./','./index.html','./styles.css','./app.js','./state.js','./sync.js','./sync-config.js','./playground.js','./data/lessons.js','./data/resources.js','./data/curriculum.json','./data/solutions.json','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png']
 digest=hashlib.sha256()
 for asset in assets[1:]:
     digest.update(root.joinpath(asset[2:]).read_bytes())

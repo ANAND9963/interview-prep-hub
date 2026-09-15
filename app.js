@@ -1,6 +1,8 @@
 import {lessons} from './data/lessons.js';
 import {loadState,writeState,validateState,reviewDue} from './state.js';
 import {mountPlayground} from './playground.js';
+import {roadmaps,mlAlgorithms} from './data/resources.js';
+import {createSync} from './sync.js';
 
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -10,13 +12,18 @@ const tracks={
  ai:{name:'AI & machine learning',symbol:'AI',title:'Build your AI foundations.',description:'Follow the curriculum from data preparation and model evaluation to retrieval and agents.'},
  react:{name:'React',symbol:'Re',title:'Think in React.',description:'Practice state, hooks, rendering behavior, and frontend trade-offs.'},
  angular:{name:'Angular',symbol:'Ng',title:'Build with Angular.',description:'Learn component boundaries, signals, asynchronous streams, and forms.'},
+ library:{name:'Learning library',symbol:'▤',title:'Beginner to advanced learning paths.',description:'Use original checkpoints here, then open verified external resources for deeper reading and practice.'},
  system:{name:'System design',symbol:'◇',title:'Design beyond the happy path.',description:'Practice architecture, estimate capacity, and explain what fails at scale.'},
- interview:{name:'Interview room',symbol:'↗',title:'Practice under interview conditions.',description:'Rehearse your reasoning, ask clarifying questions, and review your answers honestly.'}
+ interview:{name:'Interview room',symbol:'↗',title:'Practice under interview conditions.',description:'Rehearse your reasoning, ask clarifying questions, and review your answers honestly.'},
+ sync:{name:'Sync & account',symbol:'◎',title:'Keep progress across your devices.',description:'Your browser remains the local source while signed-in progress is backed up automatically.'}
 };
 let state,items=[],solutions={},timerCleanup=()=>{},filter={query:'',topic:'all',level:'all',status:'all',content:'all'},page=1,lastTrack='',toastTimer;
 const loaded=loadState();state=loaded.state;
+let syncStatus={state:'disabled',message:'Cloud sync needs one-time setup.',email:'',configured:false};
+const sync=createSync({getState:()=>state,replaceState:next=>{state=next;writeState(state);route();},onStatus:value=>{syncStatus=value;renderSyncStatus();}});
 function toast(message){clearTimeout(toastTimer);$('#toast').textContent=message;$('#toast').hidden=false;toastTimer=setTimeout(()=>$('#toast').hidden=true,4500);}
-function save(){try{writeState(state);}catch{toast('Browser storage is unavailable or full. Export your progress now.');}}
+function save(){try{state.meta={...(state.meta||{}),updatedAt:Date.now()};writeState(state);sync.schedule();}catch{toast('Browser storage is unavailable or full. Export your progress now.');}}
+function renderSyncStatus(){const el=$('#sync-indicator');if(!el)return;el.textContent={synced:'Synced',syncing:'Syncing…','signed-out':'Local',disabled:'Local',error:'Sync error'}[syncStatus.state]||'Local';el.className='sync-'+syncStatus.state;$('#storage-badge').textContent=syncStatus.state==='synced'?'AUTOMATIC SYNC ON':'LOCAL-FIRST PROGRESS';}
 function itemState(id){return state.items[id]||{status:'todo',bookmarked:false,notes:'',code:'',reviewed:0};}
 function updateItem(id,patch){state.items[id]={...itemState(id),...patch};save();}
 function ready(i){return Boolean(i.lesson||i.solution);}
@@ -51,7 +58,7 @@ function board(track){
  const list=items.filter(i=>i.track===track);
  const solved=list.filter(i=>itemState(i.id).status==='solved').length,available=list.filter(ready).length,due=list.filter(i=>reviewDue(itemState(i.id))).length;
  const first=list.find(i=>ready(i)&&itemState(i.id).status!=='solved')||list.find(ready);
- $('#main').innerHTML=titleBlock(track,track==='system'?'<a class="button primary" href="#/playground">Open playground ↗</a>':first?'<a class="button primary" href="#/item/'+first.id+'">Continue practice →</a>':'')+
+ $('#main').innerHTML=titleBlock(track,track==='system'?'<a class="button primary" href="#/playground">Open playground ↗</a>':roadmaps[track]?'<a class="button primary" href="#/library/'+track+'">Open '+esc(track.toUpperCase())+' roadmap →</a>':first?'<a class="button primary" href="#/item/'+first.id+'">Continue practice →</a>':'')+
  '<div class="stats"><div class="stat"><span class="label">Curriculum entries</span><strong class="value">'+list.length+'</strong><span class="tiny">Your learning path</span></div><div class="stat"><span class="label">Ready to study</span><strong class="value">'+available+'</strong><span class="tiny">With original explanations</span></div><div class="stat featured"><span class="label">Completed</span><strong class="value">'+solved+' <span class="muted" style="font-size:1rem">/ '+list.length+'</span></strong><div class="progress-line"><span style="width:'+(list.length?solved/list.length*100:0)+'%"></span></div></div><div class="stat"><span class="label">Revision queue</span><strong class="value">'+due+'</strong><span class="tiny">In practice or 7+ days old</span></div></div>'+
  (available<list.length?'<div class="notice"><strong>'+available+' complete '+(track==='dsa'?'solution articles':'lessons')+'</strong> are available in this release. Other entries preserve your curriculum and have space for practice notes; their full explanations are still to be written. Use “Ready to study” to focus on available content.</div>':'')+
  '<section class="panel"><div class="panel-header"><h2>'+esc(tracks[track].name)+' board</h2><span class="muted" style="font-size:.8125rem">Saved as you go</span></div><div class="filters"><input class="search" id="search" aria-label="Search curriculum" placeholder="Search a problem, topic, or concept…" value="'+esc(filter.query)+'"><select id="topic" aria-label="Filter by topic"><option value="all">All topics</option>'+[...new Set(list.map(i=>i.topic))].sort().map(t=>'<option value="'+esc(t)+'" '+(filter.topic===t?'selected':'')+'>'+esc(t)+'</option>').join('')+'</select><select id="content" aria-label="Filter by content"><option value="all">All content</option><option value="ready">Ready to study</option><option value="curriculum">Curriculum only</option></select><select id="status" aria-label="Filter by progress"><option value="all">All progress</option><option value="todo">Not started</option><option value="practicing">Practicing</option><option value="solved">Completed</option><option value="bookmarked">Bookmarked</option><option value="due">Due for revision</option></select>'+(track==='dsa'?'<select id="level" aria-label="Filter by difficulty"><option value="all">All difficulty</option><option>Easy</option><option>Medium</option><option>Hard</option><option>Unrated</option></select>':'')+'</div><div id="rows"></div></section>'+mobileTools();
@@ -136,6 +143,29 @@ function interview(){
  }
  $('#next-question').onclick=()=>{index++;show();};$('#interview-type').onchange=()=>{index=0;show();};show();
 }
+function library(selected='java'){
+ const keys=Object.keys(roadmaps),current=roadmaps[selected]||roadmaps.java;
+ $('#main').innerHTML=titleBlock('library')+
+ '<div class="tabs library-tabs" role="navigation" aria-label="Learning roadmaps">'+keys.map(k=>'<a class="button '+(k===selected?'active':'')+'" href="#/library/'+k+'">'+esc(k==='ai'?'AI / ML':k[0].toUpperCase()+k.slice(1))+'</a>').join('')+'</div>'+
+ '<section class="panel article library"><div class="eyebrow">'+esc(selected==='ai'?'AI / ML':selected.toUpperCase())+' ROADMAP</div><h2>'+esc(current.title)+'</h2><p class="muted">Complete the stages in order. Mark the detailed lessons from their track board as you practice. Videos can be added later as another resource type without changing this structure.</p>'+
+ '<div class="roadmap">'+current.stages.map(([stage,topics])=>'<section class="roadmap-stage"><h3>'+esc(stage)+'</h3><ol>'+topics.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ol></section>').join('')+'</div>'+
+ '<h2>Learning resources</h2><div class="resource-grid">'+current.resources.map(([name,desc,url,type])=>'<article class="resource-card"><div>'+tag(type,type==='Official'?'ready':'')+'<h3>'+esc(name)+'</h3><p>'+esc(desc)+'</p></div>'+(url?'<a class="button" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">Open resource ↗</a>':'<span class="muted">Used as a roadmap reference</span>')+'</article>').join('')+'</div>'+
+ (selected==='ai'?'<h2>Machine-learning algorithm guide</h2><p class="muted">Start with a baseline and choose algorithms from the data shape, constraints and error costs—not popularity.</p><div class="table-wrap"><table><thead><tr><th>Algorithm</th><th>Use it for</th><th>Trade-off</th><th>Watch for</th><th>Evaluate with</th></tr></thead><tbody>'+mlAlgorithms.map(row=>'<tr>'+row.map(cell=>'<td>'+esc(cell)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':'')+
+ (selected==='java'?'<div class="notice"><strong>Spring note guidance:</strong> Your uploaded PDFs were used to identify study topics. They were not copied into this public website. The Spring Framework notes date from 2018, and both references may show older configuration patterns. Prefer current Spring documentation for production code.</div>':'')+
+ '</section>'+mobileTools();
+}
+function syncPage(){
+ $('#main').innerHTML=titleBlock('sync')+
+ '<div class="workspace"><section class="panel article"><h2>Synchronization status</h2><p class="sync-card sync-'+esc(syncStatus.state)+'"><strong>'+esc({synced:'Synchronized',syncing:'Synchronizing','signed-out':'Not signed in',disabled:'Setup required',error:'Synchronization error'}[syncStatus.state]||'Local only')+'</strong><br>'+esc(syncStatus.message)+(syncStatus.email?'<br><span class="muted">'+esc(syncStatus.email)+'</span>':'')+'</p>'+
+ (syncStatus.configured&&syncStatus.state!=='synced'&&syncStatus.state!=='syncing'?'<form id="auth-form"><label class="field">Email<input id="auth-email" type="email" autocomplete="email" required maxlength="254"></label><label class="field">Password<input id="auth-password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label><div class="tabs"><button class="primary" name="mode" value="signin">Sign in</button><button name="mode" value="signup">Create account</button></div></form>':'')+
+ (syncStatus.state==='synced'?'<div class="tabs"><button id="sync-now" class="primary">Sync now</button><button id="sign-out">Sign out</button></div>':'')+
+ '<h2>How it works</h2><ol><li>Every edit is saved immediately in this browser.</li><li>When signed in, changes upload automatically after a short delay.</li><li>When the app opens on another signed-in device, the newer complete backup is used.</li><li>Exported JSON backups remain available as an independent recovery option.</li></ol><div class="notice">Concurrent offline edits on two devices use last-write-wins for the complete progress backup. Synchronize one device before continuing on another to avoid overwriting newer work.</div></section>'+
+ '<aside class="panel side-panel"><h2>One-time administrator setup</h2><ol class="muted"><li>Create a free Supabase project.</li><li>Run <code>supabase-schema.sql</code> in its SQL Editor.</li><li>Copy <code>sync-config.example.js</code> to <code>sync-config.js</code>.</li><li>Add the project URL and browser-safe publishable or anon key.</li><li>Commit and push. Netlify redeploys automatically.</li></ol><p class="notice">Never put a Supabase service-role key in this website. Row-level security in the provided SQL restricts each user to their own record.</p><button data-global="export">Export local backup</button></aside></div>';
+ const form=$('#auth-form');
+ if(form)form.addEventListener('submit',async e=>{e.preventDefault();const mode=e.submitter?.value||'signin',button=e.submitter;button.disabled=true;try{await sync.signIn($('#auth-email').value.trim(),$('#auth-password').value,mode);syncPage();}catch(error){toast(error.message);button.disabled=false;}});
+ if($('#sync-now'))$('#sync-now').onclick=()=>sync.push().catch(e=>toast(e.message));
+ if($('#sign-out'))$('#sign-out').onclick=async()=>{await sync.signOut();syncPage();};
+}
 function playground(session='default'){
  const i=items.find(x=>x.id===session);
  if(session!=='default'&&(!i||i.track!=='system'))return notFound();
@@ -149,7 +179,7 @@ function route(){
  const [kind,id]=parts,track=kind==='item'?(items.find(i=>i.id===id)?.track||'dsa'):kind==='playground'?'system':kind;
  if(track!==lastTrack){filter={query:'',topic:'all',level:'all',status:'all',content:'all'};page=1;lastTrack=track;}
  nav(track);
- if(kind==='item')detail(id);else if(kind==='playground')playground(id);else if(kind==='interview')interview();else if(tracks[kind])board(kind);else notFound();
+ if(kind==='item')detail(id);else if(kind==='playground')playground(id);else if(kind==='interview')interview();else if(kind==='library')library(id);else if(kind==='sync')syncPage();else if(tracks[kind])board(kind);else notFound();
  window.scrollTo(0,0);
 }
 async function start(){
@@ -164,11 +194,20 @@ async function start(){
   window.addEventListener('hashchange',route);route();
   if(loaded.error)toast(loaded.error);
   const offline=()=>$('#offline').hidden=navigator.onLine;window.addEventListener('online',offline);window.addEventListener('offline',offline);offline();
+  setupTheme();sync.start().catch(e=>toast(e.message));
   if('serviceWorker' in navigator){
    navigator.serviceWorker.register('./sw.js').then(reg=>{
     reg.addEventListener('updatefound',()=>{const w=reg.installing;w?.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)toast('An update is ready. Close all app tabs and reopen to load it.');});});
    }).catch(()=>toast('Offline caching is unavailable. The app can still be used online.'));
   }
  }catch(e){$('#main').innerHTML='<h1>Unable to load your workspace</h1><p>'+esc(e.message)+'</p><p>Connect to the internet and reload. When running locally, serve this folder over HTTP rather than opening index.html directly.</p><button id="reload">Reload</button>';$('#reload').onclick=()=>location.reload();}
+}
+function setupTheme(){
+ const stored=localStorage.getItem('interview-prep-hub:theme');
+ const dark=stored?stored==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+ document.documentElement.dataset.theme=dark?'dark':'light';
+ const render=()=>{const isDark=document.documentElement.dataset.theme==='dark';$('#theme-toggle').textContent=isDark?'Light':'Dark';$('#theme-toggle').setAttribute('aria-label',isDark?'Use light theme':'Use dark theme');};
+ $('#theme-toggle').onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;localStorage.setItem('interview-prep-hub:theme',next);render();};
+ render();renderSyncStatus();
 }
 start();

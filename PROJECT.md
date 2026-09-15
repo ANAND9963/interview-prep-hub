@@ -6,12 +6,12 @@
 - Include DSA, AI, Java/Spring, React, Angular, system design, and interview preparation.
 - Keep full solutions separate from curriculum-only entries. Do not imply complete coverage.
 - Explain correctness, edge cases, complexity and meaningful trade-offs. Do not invent company-specific question frequency or personal experience.
-- Keep progress local, provide backups, and preserve installed PWA behavior.
+- Keep progress local-first, provide backups, support optional Supabase synchronization, and preserve installed PWA behavior.
 - No paid APIs or embedded ChatGPT subscription integration.
 
 # Current state
 
-The first static application is implemented. Source curriculum is imported from the three visible sheets, deduplicated by track and title. Twenty DSA articles contain 35 Java implementations. Additional original lessons cover the other learning tracks. The remaining full curriculum explanations are unfinished and labeled accordingly.
+The first static application is implemented. Source curriculum is imported from the three visible sheets, deduplicated by track and title. Twenty DSA articles contain 35 Java implementations. Additional original lessons cover the other learning tracks. A learning library adds ordered Java, Python, AI/ML, React and Angular paths, source links, and algorithm comparisons. Light/dark themes and optional local-first Supabase synchronization are implemented. The remaining full curriculum explanations are unfinished and labeled accordingly.
 
 # Release check
 

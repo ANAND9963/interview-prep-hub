@@ -31,10 +31,12 @@ Official instructions: [Configure a GitHub Pages publishing source](https://docs
 | Imported visible curriculum | 320 unique entries: 209 DSA, 75 AI/ML, 36 system design |
 | Complete DSA articles | 20 original articles with 35 Java implementations, examples, hints, correctness explanations, complexity and trade-offs |
 | Guided lessons | Java/Spring, AI, React, Angular and system design |
+| Learning library | Beginner-to-advanced Java, Python, AI/ML, React and Angular roadmaps, source links, and an ML algorithm guide |
 | Practice tracking | Not started / practicing / completed, bookmarks, notes, scratchpad, seven-day revision queue |
 | System design | Movable components, keyboard movement, directed connections, rename/delete, undo, templates, per-topic diagrams and capacity worksheet |
 | Interview room | 12 general prompts, answer frameworks, follow-up questions, timer and self-review rubric |
 | Device support | Responsive layout, offline PWA, export/import backups |
+| Appearance | Light and dark themes saved per browser |
 
 **Not every curriculum entry has a full solution yet.** Ready content is clearly labeled. Other entries retain a curriculum brief, original LeetCode link where supplied, and a place to save your work. No generic answer is presented as a completed solution.
 
@@ -59,11 +61,29 @@ Open **http://localhost:5173/**. Do not open index.html as a local file because 
 
 Hash routes such as #/item/dsa-min-stack work on GitHub Pages without rewrite rules.
 
+## Automatic progress synchronization
+
+The app is local-first: it works without a network and keeps browser storage as the immediate copy. Optional Supabase synchronization backs up the complete validated state after edits and restores a newer cloud copy after sign-in.
+
+One-time setup:
+
+1. Create a Supabase project.
+2. Open **SQL Editor**, paste the contents of supabase-schema.sql, and run it.
+3. In **Authentication → URL Configuration**, set the deployed Netlify site URL.
+4. Copy sync-config.example.js to sync-config.js.
+5. Add the project's HTTPS URL and **publishable/anon** browser key. Never use a service-role key.
+6. Commit and push. Netlify redeploys automatically.
+7. Open **Sync & account** in the app and create an account or sign in.
+
+The SQL enables row-level security and permits an authenticated user to select, insert, and update only their own row. The public browser key identifies the project; it does not bypass row-level security.
+
+The current conflict strategy is whole-backup last-write-wins. Synchronize one device before working offline on another. This prevents hidden partial merges but means concurrent offline edits on two devices can overwrite one another.
+
 ## Progress and privacy
 
-All progress, notes, scratchpad text, diagrams, and interview drafts are stored in browser localStorage on that device and origin. They are not committed to GitHub or sent to a backend by this application.
+All progress, notes, scratchpad text, diagrams, and interview drafts are first stored in browser localStorage on that device and origin. They are not committed to GitHub. After Supabase is configured and the user signs in, the validated state is also stored in that user's protected user_progress row.
 
-Use **Export progress** regularly. Clearing browser data, changing browsers, or switching domains does not transfer progress. **Import progress** validates and merges a backup; matching entries are replaced after an explicit confirmation. Automatic cross-device sync is not included.
+Use **Export progress** regularly even when synchronization is enabled. Clearing browser data, changing browsers, or switching domains does not transfer unsigned-in progress. **Import progress** validates and merges a backup; matching entries are replaced after an explicit confirmation.
 
 The source workbook is not published. The importer reads only visible sheets and emits curriculum metadata and approved LeetCode URLs. Duplicate titles within a track are combined. Hidden source sheets are excluded.
 
@@ -74,7 +94,10 @@ The source workbook is not published. The importer reads only visible sheets and
 - scripts/build_content.py: original DSA articles and Java fixtures.
 - data/solutions.json: generated DSA content used by the app.
 - data/lessons.js: original guided lessons.
+- data/resources.js: roadmaps, verified external links and the ML algorithm comparison.
 - app.js: boards, problem workspace, and interview room.
+- sync.js: Supabase authentication and local-first synchronization.
+- supabase-schema.sql: table, grants and row-level security policies.
 - playground.js: diagram editor and capacity worksheet.
 - state.js: persistence, backup validation, and pure calculations.
 

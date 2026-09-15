@@ -1,5 +1,5 @@
 export const STORAGE_KEY='interview-prep-hub:v1';
-export const blankState=()=>({version:1,items:{},diagrams:{},interview:{},activeDiagram:'default'});
+export const blankState=()=>({version:1,items:{},diagrams:{},interview:{},activeDiagram:'default',meta:{updatedAt:0}});
 const plain=o=>o!==null&&typeof o==='object'&&!Array.isArray(o);
 const safeKey=k=>typeof k==='string'&&/^[a-zA-Z0-9_-]{1,180}$/.test(k)&&!['__proto__','prototype','constructor'].includes(k);
 export function validateDiagram(d){
@@ -31,6 +31,7 @@ export function validateState(value){
  if(plain(value.interview)){
   for(const [id,v] of Object.entries(value.interview))if(safeKey(id)&&typeof v==='string')clean.interview[id]=v.slice(0,30000);
  }
+ if(plain(value.meta)&&Number.isFinite(value.meta.updatedAt))clean.meta.updatedAt=value.meta.updatedAt;
  return clean;
 }
 export function loadState(){

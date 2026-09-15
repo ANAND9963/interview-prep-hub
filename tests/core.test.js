@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
 import {validateState,validateDiagram,capacity,reviewDue} from '../state.js';
 import {lessons} from '../data/lessons.js';
+import {roadmaps,mlAlgorithms} from '../data/resources.js';
 const curriculum=JSON.parse(readFileSync(new URL('../data/curriculum.json',import.meta.url)));
 const solutions=JSON.parse(readFileSync(new URL('../data/solutions.json',import.meta.url)));
 test('curriculum identities and outbound practice destinations',()=>{
@@ -46,4 +47,12 @@ test('manifest assets exist and stay within the repository scope',()=>{
  const m=JSON.parse(readFileSync(new URL('../manifest.webmanifest',import.meta.url)));
  assert.equal(m.start_url,'./');assert.equal(m.scope,'./');
  for(const icon of m.icons)assert.ok(existsSync(new URL('../'+icon.src,import.meta.url)));
+});
+test('learning roadmaps have ordered stages and safe external resources',()=>{
+ for(const track of ['java','python','ai','react','angular']){
+  assert.ok(roadmaps[track].stages.length>=4);
+  for(const [,topics] of roadmaps[track].stages)assert.ok(topics.length>=4);
+  for(const [, ,url] of roadmaps[track].resources)if(url)assert.equal(new URL(url).protocol,'https:');
+ }
+ assert.ok(mlAlgorithms.length>=10);
 });
