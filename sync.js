@@ -20,6 +20,19 @@ async function validAuth(){
  if(auth.expires_at&&auth.expires_at*1000>Date.now()+60000)return auth;
  try{return await refresh(auth)}catch{saveAuth(null);return null}
 }
+async function consumeAuthCallback(){
+ const params=new URLSearchParams(location.hash.slice(1));
+ const access_token=params.get('access_token'),refresh_token=params.get('refresh_token');
+ if(!access_token||!refresh_token)return null;
+ const userResponse=await fetch(syncConfig.supabaseUrl+'/auth/v1/user',{headers:headers(access_token)});
+ const user=await responseJson(userResponse);
+ const expiresIn=Number(params.get('expires_in'))||3600;
+ const auth={access_token,refresh_token,token_type:params.get('token_type')||'bearer',expires_in:expiresIn,expires_at:Math.floor(Date.now()/1000)+expiresIn,user};
+ saveAuth(auth);
+ history.replaceState(null,'',location.pathname+location.search+'#/sync');
+ window.dispatchEvent(new Event('hashchange'));
+ return auth;
+}
 export function createSync({getState,replaceState,onStatus}){
  let timer=null,busy=false;
  const status=(state,message='',email='')=>onStatus({state,message,email,configured:configured()});
@@ -56,7 +69,8 @@ export function createSync({getState,replaceState,onStatus}){
  async function signIn(email,password,mode){
   if(!configured())throw Error('Supabase configuration has not been added yet.');
   status('syncing',mode==='signup'?'Creating account…':'Signing in…',email);
-  const endpoint=mode==='signup'?'/auth/v1/signup':'/auth/v1/token?grant_type=password';
+  const returnUrl=location.origin+location.pathname;
+  const endpoint=mode==='signup'?'/auth/v1/signup?redirect_to='+encodeURIComponent(returnUrl):'/auth/v1/token?grant_type=password';
   const r=await fetch(syncConfig.supabaseUrl+endpoint,{method:'POST',headers:headers(),body:JSON.stringify({email,password})});
   const auth=await responseJson(r);
   if(!auth.access_token){status('signed-out','Check your email to confirm the account, then sign in.',email);return false;}
@@ -67,6 +81,6 @@ export function createSync({getState,replaceState,onStatus}){
   if(auth)await fetch(syncConfig.supabaseUrl+'/auth/v1/logout',{method:'POST',headers:headers(auth.access_token)}).catch(()=>{});
   saveAuth(null);status('signed-out','Signed out. Local progress remains on this device.');
  }
- async function start(){if(!configured()){status('disabled','Cloud sync needs one-time setup.');return;}const auth=await validAuth();if(auth)await pullAndMerge().catch(e=>status('error',e.message,auth.user?.email||''));else status('signed-out','Sign in to synchronize.');}
+ async function start(){if(!configured()){status('disabled','Cloud sync needs one-time setup.');return;}let auth;try{auth=await consumeAuthCallback();}catch(e){status('error','Email was confirmed, but the session could not be opened: '+e.message);return;}auth=auth||await validAuth();if(auth)await pullAndMerge().catch(e=>status('error',e.message,auth.user?.email||''));else status('signed-out','Sign in to synchronize.');}
  return {start,schedule,push:()=>push(),signIn,signOut,configured};
 }
