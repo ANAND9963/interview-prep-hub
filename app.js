@@ -48,10 +48,14 @@ async function importBackup(file){
 $('#export').onclick=backup;
 $('#import').onchange=e=>importBackup(e.target.files[0]);
 let installPrompt;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
-async function install(){if(installPrompt){await installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;}else $('#install-dialog').showModal();}
+const isInstalled=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+function updateInstallControls(){document.documentElement.classList.toggle('app-installed',isInstalled());if(isInstalled()&&$('#install-dialog')?.open)$('#install-dialog').close();}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;updateInstallControls();});
+window.addEventListener('appinstalled',()=>{installPrompt=null;updateInstallControls();toast('App installed.');});
+window.matchMedia('(display-mode: standalone)').addEventListener?.('change',updateInstallControls);
+async function install(){if(isInstalled())return; if(installPrompt){await installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;updateInstallControls();}else $('#install-dialog').showModal();}
 $('#install').onclick=install;
-function mobileTools(){return '<div class="mobile-tools"><button data-global="export">Export progress</button><button data-global="import">Import progress</button><button data-global="install">Install app</button></div>';}
+function mobileTools(){return '<div class="mobile-tools"><button data-global="export">Export progress</button><button data-global="import">Import progress</button><button class="install-control" data-global="install">Install app</button></div>';}
 document.addEventListener('click',e=>{const a=e.target.closest('[data-global]');if(!a)return;({export:backup,import:()=>$('#import').click(),install})[a.dataset.global]?.();});
 
 function board(track){
@@ -183,6 +187,7 @@ function route(){
  window.scrollTo(0,0);
 }
 async function start(){
+ updateInstallControls();
  try{
   const responses=await Promise.all([fetch('./data/curriculum.json'),fetch('./data/solutions.json')]);
   if(responses.some(r=>!r.ok))throw Error('Could not load the curriculum.');
