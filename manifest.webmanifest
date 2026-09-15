@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "Interview Prep Hub",
+  "short_name": "Prep Hub",
+  "description": "DSA, AI, Java, frontend and system design practice",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#111b2e",
+  "icons": [
+    {"src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
